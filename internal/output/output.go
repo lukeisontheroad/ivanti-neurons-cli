@@ -54,7 +54,14 @@ func Objects(w io.Writer, items []json.RawMessage, cols []string) {
 		}
 		rows = append(rows, row)
 	}
-	Table(w, cols, rows)
+	headers := make([]string, len(cols))
+	for i, c := range cols {
+		headers[i] = c
+		if isTimeKey(c) {
+			headers[i] += " (UTC)"
+		}
+	}
+	Table(w, headers, rows)
 }
 
 // KV prints a JSON object as "key: value" lines, skipping null and empty
@@ -120,17 +127,38 @@ func Format(key string, v any) string {
 			parts = append(parts, Format(key, e))
 		}
 		return strings.Join(parts, ", ")
+	case map[string]any:
+		// a named object reads as its name (groups, spaces, ...); others as
+		// key=value pairs
+		if name, ok := x["name"].(string); ok {
+			return name
+		}
+		keys := make([]string, 0, len(x))
+		for k := range x {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		parts := make([]string, 0, len(keys))
+		for _, k := range keys {
+			if s := Format(k, x[k]); s != "" {
+				parts = append(parts, k+"="+s)
+			}
+		}
+		return strings.Join(parts, ", ")
 	}
 	data, _ := json.Marshal(v)
 	return string(data)
 }
 
+// isTimeKey reports timestamp fields by their camelCase suffix (createdAt,
+// lastCheckin, tokenExpiry, notAfter, installedOn, ...), so "version" or
+// "format" do not match.
 func isTimeKey(key string) bool {
-	k := strings.ToLower(key[strings.LastIndex(key, ".")+1:])
-	for _, s := range []string{"at", "time", "date", "checkin", "expiry", "expires", "on", "before", "after"} {
+	k := key[strings.LastIndex(key, ".")+1:]
+	for _, s := range []string{"At", "Time", "Date", "Checkin", "Expiry", "Expires", "On", "Before", "After"} {
 		if strings.HasSuffix(k, s) {
 			return true
 		}
 	}
-	return false
+	return k == "date" || k == "time"
 }

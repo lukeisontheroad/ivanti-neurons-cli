@@ -37,7 +37,7 @@ store searches, reviews, and app deletion are scoped to the content space
 in-house profiles to the device space.`,
 	}
 	categories := appGetCmd("categories", "List app categories with their app counts", "/api/v1/app/category", []string{"id", "name", "count"})
-	distribution := appGetCmd("distribution <version-id>", "Show who an app version is distributed to", "/api/v1/app/version/{id}/distribution", nil)
+	distribution := appGetCmd("distribution <version-id|app-id>", "Show who an app version is distributed to", "/api/v1/app/version/{id}/distribution", nil)
 	distribution.Long = `Show the distribution of an app version: the users, user groups, devices,
 and device groups it is assigned to.`
 	cmd.AddCommand(
@@ -63,31 +63,51 @@ func appCheckBundle(s string) error {
 // takes the command's single argument (numeric, or a GUID for async tasks).
 func appGetCmd(use, short, path string, cols []string) *cobra.Command {
 	nargs := strings.Count(path, "{id}")
-	return &cobra.Command{
+	byVersion := strings.Contains(path, "/version/{id}")
+	var version string
+	cmd := &cobra.Command{
 		Use:   use,
 		Short: short,
 		Args:  cobra.ExactArgs(nargs),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			p := path
-			if nargs == 1 {
-				if !isGUID(args[0]) {
-					if _, err := parseID(args[0], false); err != nil {
-						return err
-					}
+			if nargs == 1 && !isGUID(args[0]) {
+				if _, err := parseID(args[0], false); err != nil {
+					return err
 				}
-				p = strings.Replace(path, "{id}", args[0], 1)
 			}
 			client, err := newClient()
 			if err != nil {
 				return err
 			}
+			p := path
+			if nargs == 1 {
+				id := args[0]
+				if byVersion { // an app id resolves to its latest version
+					if id, _, err = appVersionArg(cmd, client, id, version); err != nil {
+						return err
+					}
+				}
+				p = strings.Replace(path, "{id}", id, 1)
+			}
 			raw, err := client.Get(cmd.Context(), p, nil)
 			if err != nil {
 				return err
 			}
+			if strings.HasSuffix(path, "/distribution") && string(bytes.TrimSpace(raw)) == "null" {
+				// the API answers null for a version distributed to nobody
+				if flagOutput != "json" {
+					fmt.Fprintln(cmd.ErrOrStderr(), "Not distributed to anyone.")
+					return nil
+				}
+				raw = json.RawMessage(`{"accounts":[],"groups":[],"devices":[],"ruleGroups":[]}`)
+			}
 			return render(cmd, raw, cols)
 		},
 	}
+	if byVersion {
+		appVersionFlags(cmd, &version, nil)
+	}
+	return cmd
 }
 
 // appBody builds a JSON object request body from --data (inline, @file, or
@@ -466,9 +486,8 @@ paged v1 inventory search (supports --query, --fq, --sort, --limit);
 with several ids, or --v2, the v2 inventory call, which adds usage
 counters and install/source types per app.
 
-The v1 call has been rate-limited by Ivanti to 30 calls per minute per
-user (newer API guides say the limit was lifted); HTTP 429 responses are
-retried automatically. --facet-fq filters on install facets, e.g. to hide
+The v1 call may be rate-limited to 30 calls per minute per user; HTTP 429
+responses are retried automatically. --facet-fq filters on install facets, e.g. to hide
 system apps.`,
 		Example: `  ivanti-neurons app inventory device 22115
   ivanti-neurons app inventory device 22115 --facet-fq "INSTALLTYPE != 'SYSTEM_APP' AND INSTALLTYPE != 'UPDATED_SYSTEM_APP'"

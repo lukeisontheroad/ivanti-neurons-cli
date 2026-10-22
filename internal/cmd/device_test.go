@@ -51,18 +51,19 @@ func TestDeviceListAllSortsByID(t *testing.T) {
 }
 
 func TestDeviceWithin(t *testing.T) {
-	for _, tc := range []struct{ field, dur, want string }{
-		{"lastCheckin", "90s", "lastCheckin<'00:01:30'"},
-		{"lastCheckin", "1d12h", "lastCheckin<'1:12:00:00'"},
-		{"lastRegistrationTime", "3m6s", "lastRegistrationTime<'0:00:03:06'"},
-		{"lastRegistrationTime", "30d", "lastRegistrationTime<'30:00:00:00'"},
+	for _, tc := range []struct{ field, op, dur, want string }{
+		{"lastCheckin", "<", "90s", "lastCheckin<'00:01:30'"},
+		{"lastCheckin", "<", "1d12h", "lastCheckin<'1:12:00:00'"},
+		{"lastCheckin", ">", "30d", "lastCheckin>'30:00:00:00'"},
+		{"lastRegistrationTime", "<", "3m6s", "lastRegistrationTime<'0:00:03:06'"},
+		{"lastRegistrationTime", "<", "30d", "lastRegistrationTime<'30:00:00:00'"},
 	} {
-		if got, err := deviceWithin(tc.field, tc.dur); err != nil || got != tc.want {
-			t.Errorf("deviceWithin(%s, %s) = %q, %v; want %q", tc.field, tc.dur, got, err, tc.want)
+		if got, err := deviceWithin(tc.field, tc.op, tc.dur); err != nil || got != tc.want {
+			t.Errorf("deviceWithin(%s, %s, %s) = %q, %v; want %q", tc.field, tc.op, tc.dur, got, err, tc.want)
 		}
 	}
 	for _, bad := range []string{"", "d", "7x", "1.5d", "-1h", "0s"} {
-		if _, err := deviceWithin("lastCheckin", bad); err == nil {
+		if _, err := deviceWithin("lastCheckin", "<", bad); err == nil {
 			t.Errorf("deviceWithin(%q) accepted", bad)
 		}
 	}
@@ -93,7 +94,7 @@ func TestDeviceView(t *testing.T) {
 	m := newMock(t)
 	m.on("GET /api/v1/device/{id}", deviceFixture)
 	out := m.run(t, "device", "view", "92752")
-	mustContain(t, out, "prettyModel:", "iPad Mini 2nd gen", "lastCheckin:", "2020-01-07 13:35", `{"cityId":["SF"]}`)
+	mustContain(t, out, "prettyModel:", "iPad Mini 2nd gen", "lastCheckin:", "2020-01-07 13:35", "cityId=SF")
 	if strings.Contains(out, "mdmChannelId") {
 		t.Errorf("default view should print key fields only:\n%s", out)
 	}

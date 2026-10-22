@@ -57,7 +57,7 @@ func TestBulkDeviceList(t *testing.T) {
 func TestBulkReads(t *testing.T) {
 	m := bulkMock(t)
 	mustContain(t, m.run(t, "bulk", "get", "3"), "enrollmentToken:", "ttzzel34", "2023-11-17 09:59")
-	mustContain(t, m.run(t, "bulk", "info", "3"), "apiTestcsvUpdate", `{"PENDING_REG":51,"TOTAL":51}`)
+	mustContain(t, m.run(t, "bulk", "info", "3"), "apiTestcsvUpdate", "PENDING_REG=51, TOTAL=51")
 	// the QR content arrives as a JSON string; print it unescaped
 	mustContain(t, m.run(t, "bulk", "qrcode", "3"), `{"android.app.extra.PROVISIONING_ADMIN_EXTRAS_BUNDLE":{"server":"host"`)
 	if _, err := m.runErr(t, "bulk", "get", "../tenant"); err == nil || !strings.Contains(err.Error(), "invalid id") {

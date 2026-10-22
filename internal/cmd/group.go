@@ -14,23 +14,24 @@ import (
 )
 
 var (
-	groupCols             = []string{"id", "name", "description", "membershipStatic", "source", "applicationCount"}
-	deviceGroupCols       = []string{"id", "name", "description", "memberCount", "membershipStatic", "definition"}
-	deviceGroupFindCols   = []string{"id", "name", "dmPartitionName", "dmPartitionId", "memberCount", "membershipStatic"}
-	deviceGroupDeviceCols = []string{"id", "deviceName", "platformType", "platformVersion", "uid", "registrationState", "lastCheckin"}
-	deviceGroupViewCols   = []string{"id", "name", "description", "type", "definition", "membershipStatic", "memberCount",
+	groupCols           = []string{"id", "name", "description", "membershipStatic", "source", "applicationCount"}
+	deviceGroupCols     = []string{"id", "name", "description", "memberCount", "membershipStatic", "definition"}
+	deviceGroupFindCols = []string{"id", "name", "dmPartitionName", "dmPartitionId", "memberCount", "membershipStatic"}
+	deviceGroupViewCols = []string{"id", "name", "description", "type", "definition", "membershipStatic", "memberCount",
 		"staticMembers", "systemName", "mutable", "dmPartitionId", "dmPartitionName", "createdAt", "modifiedAt"}
 )
 
 // newGroupCmd manages user groups (API: /api/v1/group). They are tenant-wide,
 // not tied to a device space.
 func newGroupCmd() *cobra.Command {
-	cmd := &cobra.Command{Use: "group", Short: "Manage user groups"}
+	cmd := &cobra.Command{Use: "group", Short: "Manage user groups",
+		Long: `Manage user groups. To list a group's members:
+  ivanti-neurons user list --fq "ACCOUNTGROUP='<group name>'"`}
 	cmd.AddCommand(newGroupListCmd(), groupCreateCmd("user group", "/api/v1/group",
 		`Create a user group (static by default; add users with "group members add").
 --rule creates a dynamic group from an ANTLR expression instead, e.g.
-"ACCOUNTGROUP EQ 'All Users'"; the guide recommends building dynamic rules
-in the web UI and only using attribute/value pairs it offers. Requires
+"ACCOUNTGROUP EQ 'All Users'"; rules are easiest to build in the web UI
+and copy from "device-group view" / "group list -o json". Requires
 Tenant Admin credentials.`,
 		`  ivanti-neurons group create Managers --description "Department managers"
   ivanti-neurons group create Sales --rule "ACCOUNTGROUP EQ 'Managers'"`,
@@ -319,29 +320,52 @@ out of the response.`,
 	}
 }
 
+// deviceGroupID resolves a device group argument: a numeric id, or a group
+// name in the device space (exact, case-insensitive).
+func deviceGroupID(cmd *cobra.Command, c *api.Client, space, arg string) (string, error) {
+	if id, err := parseID(arg, false); err == nil {
+		return id, nil
+	}
+	page, err := c.Search(cmd.Context(), "/api/v1/rule_group", params("dmPartitionId", space, "type", "DEVICE", "q", arg), 0)
+	if err != nil {
+		return "", err
+	}
+	for _, r := range page.SearchResults {
+		var g struct {
+			ID   json.Number `json:"id"`
+			Name string      `json:"name"`
+		}
+		if json.Unmarshal(r, &g) == nil && strings.EqualFold(g.Name, arg) {
+			return g.ID.String(), nil
+		}
+	}
+	return "", fmt.Errorf("no device group named %q in this space: see \"ivanti-neurons device-group list\"", arg)
+}
+
 func newDeviceGroupDevicesCmd() *cobra.Command {
 	var opts searchOpts
 	cmd := &cobra.Command{
-		Use:   "devices <group-id>",
-		Short: "List the devices in a device group",
-		Long: `List the devices matching a device group's rule. As the API guide
-describes, the group's definition becomes the fq filter of a device search
-in the device space; --fq narrows it further. "All Devices" lists the whole
-space. Static members are not part of the rule: groups without a rule fail
-here, see their staticMembers with "device-group view".`,
+		Use:   "devices <group-id|name>",
+		Short: "List the devices in a device group (by id or name)",
+		Long: `List the devices matching a device group's rule: the group's definition
+becomes the fq filter of a device search in the device space; --fq narrows
+it further. "All Devices" lists the whole space. Static members are not part
+of the rule: groups without a rule fail here, see their staticMembers with
+"device-group view".`,
 		Example: `  ivanti-neurons device-group devices 38010
+  ivanti-neurons device-group devices "iOS Devices"
   ivanti-neurons device-group devices 38010 --fq "platformType='IOS'" --limit 0`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			id, err := parseID(args[0], false)
-			if err != nil {
-				return err
-			}
 			client, err := newClient()
 			if err != nil {
 				return err
 			}
 			space, err := spaceID(cmd, client)
+			if err != nil {
+				return err
+			}
+			id, err := deviceGroupID(cmd, client, space, args[0])
 			if err != nil {
 				return err
 			}
@@ -359,7 +383,7 @@ here, see their staticMembers with "device-group view".`,
 				fq = opts.fq
 			}
 			opts.sortForLargeFetch()
-			return runSearch(cmd, client, "/api/v1/device", &opts, params("dmPartitionId", space, "fq", fq), deviceGroupDeviceCols)
+			return runSearch(cmd, client, "/api/v1/device", &opts, params("dmPartitionId", space, "fq", fq), deviceCols)
 		},
 	}
 	opts.register(cmd)

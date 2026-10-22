@@ -94,7 +94,9 @@ func commaList(flag string, vals []string) ([]string, error) {
 // lastRegistrationTime<'d:hh:mm:ss' (example '0:0:03:06'). The day form is
 // used from one day on. dur is a Go duration with an optional leading day
 // count: 30m, 12h, 7d, 1d12h.
-func deviceWithin(field, dur string) (string, error) {
+// deviceWithin builds a relative time clause: op "<" = within dur ("time
+// ago" smaller), ">" = longer ago than dur.
+func deviceWithin(field, op, dur string) (string, error) {
 	days, rest, ok := strings.Cut(dur, "d")
 	if !ok {
 		days, rest = "0", dur
@@ -110,10 +112,10 @@ func deviceWithin(field, dur string) (string, error) {
 	}
 	s := int64(d / time.Second)
 	hms := fmt.Sprintf("%02d:%02d:%02d", s/3600%24, s/60%60, s%60)
-	if field == "lastCheckin" && s < 86400 {
-		return fmt.Sprintf("%s<'%s'", field, hms), nil
+	if field == "lastCheckin" && s < 86400 { // the guide shows lastRegistrationTime in day form only
+		return fmt.Sprintf("%s%s'%s'", field, op, hms), nil
 	}
-	return fmt.Sprintf("%s<'%d:%s'", field, s/86400, hms), nil
+	return fmt.Sprintf("%s%s'%d:%s'", field, op, s/86400, hms), nil
 }
 
 // deviceSearch runs a GET /api/v1/device search in the device space.
@@ -133,7 +135,7 @@ func deviceSearch(cmd *cobra.Command, opts *searchOpts, extra url.Values) error 
 
 func deviceListCmd() *cobra.Command {
 	var opts searchOpts
-	var platform, status, user, email, checkedIn, registered string
+	var platform, status, user, email, ownerID, checkedIn, notCheckedIn, registered string
 	var attrs []string
 	cmd := &cobra.Command{
 		Use:     "list",
@@ -142,23 +144,19 @@ func deviceListCmd() *cobra.Command {
 		Long: `Search devices in the device space (GET /api/v1/device).
 
 The typed filters below are ANDed with each other and with --fq:
-  --platform ios            platformType='IOS'
-  --status active           registrationState='ACTIVE'
-  --user jdoe               UID EQ 'jdoe'
-  --email jdoe@example.com  EMAILADDRESS EQ 'jdoe@example.com'
-  --attr cityId=SF          CFDEVICE[cityId]='SF' (custom device attribute)
-  --checked-in-within 2h    lastCheckin<'02:00:00'
-  --registered-within 7d    lastRegistrationTime<'7:00:00:00'
+  --platform ios                 platformType='IOS'
+  --status active                registrationState='ACTIVE'
+  --user jdoe@example.com        UID EQ '...'   (the owner's UID column of "user list")
+  --owner-id 10542407            ownerId='...'  (the owner's ID column of "user list")
+  --email jdoe@example.com       EMAILADDRESS EQ '...'
+  --attr cityId=SF               CFDEVICE[cityId]='SF' (custom device attribute)
+  --checked-in-within 2h         lastCheckin<'02:00:00'       (checked in recently)
+  --not-checked-in-within 30d    lastCheckin>'30:00:00:00'    (stale devices)
+  --registered-within 7d         lastRegistrationTime<'7:00:00:00'
 
---user and --email quote the value; the guide shows it unquoted (UID EQ
-jdoe). If such a search finds nothing, try --fq "UID EQ jdoe" instead.
-
-Relative time filters compare against a "time ago" literal: hh:mm:ss, or
-d:hh:mm:ss with a leading day count. The guide documents
-lastCheckin<'00:01:00' (checked in within the last minute) and
-lastRegistrationTime<'0:0:03:06' (registered within the last 3 minutes 6
-seconds); the day form on lastCheckin is not in the guide. Durations take
-Go syntax plus a day suffix: 30m, 12h, 7d, 1d12h.
+Relative time filters compare against a "time ago" literal, hh:mm:ss or
+d:hh:mm:ss: "<" means more recent, ">" longer ago. Durations: 30m, 12h,
+7d, 1d12h.
 
 Numeric custom attributes need a "_#" suffix on the name
 (--attr 'rollNumber_#=42'). LDAP attributes go through --fq:
@@ -168,6 +166,7 @@ Fetching more than 10000 devices (--limit 0 or above 10000) sorts by id
 unless --sort is given, so paging can switch to searchAfterValues; with
 another sort field the API refuses offsets of 10000 or more.`,
 		Example: `  ivanti-neurons device list --platform ios --status active
+  ivanti-neurons device list --not-checked-in-within 30d
   ivanti-neurons device list --email jdoe@example.com
   ivanti-neurons device list --attr cityId=SF --checked-in-within 7d
   ivanti-neurons device list --registered-within 1d --sort lastRegistrationTime:desc
@@ -180,6 +179,7 @@ another sort field the API refuses offsets of 10000 or more.`,
 				{"platformType=", strings.ToUpper(platform)},
 				{"registrationState=", strings.ToUpper(status)},
 				{"UID EQ ", user},
+				{"ownerId=", ownerID},
 				{"EMAILADDRESS EQ ", email},
 			} {
 				if c[1] != "" {
@@ -193,11 +193,19 @@ another sort field the API refuses offsets of 10000 or more.`,
 				}
 				clauses = append(clauses, "CFDEVICE["+k+"]='"+v+"'")
 			}
-			for _, w := range [][2]string{{"lastCheckin", checkedIn}, {"lastRegistrationTime", registered}} {
-				if w[1] == "" {
+			if ownerID != "" {
+				if _, err := parseID(ownerID, false); err != nil {
+					return fmt.Errorf("--owner-id: %w", err)
+				}
+			}
+			if user != "" && strings.Trim(user, "0123456789") == "" {
+				fmt.Fprintf(cmd.ErrOrStderr(), "Note: --user matches the UID (usually the email); for the account id use --owner-id %s\n", user)
+			}
+			for _, w := range [][3]string{{"lastCheckin", "<", checkedIn}, {"lastCheckin", ">", notCheckedIn}, {"lastRegistrationTime", "<", registered}} {
+				if w[2] == "" {
 					continue
 				}
-				c, err := deviceWithin(w[0], w[1])
+				c, err := deviceWithin(w[0], w[1], w[2])
 				if err != nil {
 					return err
 				}
@@ -211,10 +219,12 @@ another sort field the API refuses offsets of 10000 or more.`,
 	f := cmd.Flags()
 	f.StringVar(&platform, "platform", "", "platform type, e.g. IOS or ANDROID")
 	f.StringVar(&status, "status", "", "registration state, e.g. ACTIVE, RETIRED, WIPE_PENDING")
-	f.StringVar(&user, "user", "", "owner UID")
+	f.StringVar(&user, "user", "", "owner UID (usually the email; the UID column of \"user list\")")
+	f.StringVar(&ownerID, "owner-id", "", "owner account id (the ID column of \"user list\")")
 	f.StringVar(&email, "email", "", "owner email address")
 	f.StringArrayVar(&attrs, "attr", nil, "custom device attribute name=value (repeatable)")
 	f.StringVar(&checkedIn, "checked-in-within", "", "checked in within this duration (30m, 12h, 7d)")
+	f.StringVar(&notCheckedIn, "not-checked-in-within", "", "not checked in for longer than this duration (stale devices; 30d)")
 	f.StringVar(&registered, "registered-within", "", "registered within this duration (30m, 12h, 7d)")
 	return cmd
 }
@@ -762,10 +772,8 @@ func deviceLdapSyncCmd() *cobra.Command {
 		Use:   "ldap-sync <ldap-server-id>",
 		Short: "Sync an LDAP server",
 		Long: `Trigger a sync with an LDAP server (PUT /api/v1/ldapserver/{id}/sync).
-The API guide lists this among the device calls and names the path
-parameter "deviceId", but its example returns the LDAP server with that id:
-pass the LDAP server id. -o json prints the server settings as returned,
-which can include the bind password.`,
+Pass the LDAP server id (not a device id). -o json prints the server
+settings as returned, which can include the bind password.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id, err := parseID(args[0], false)

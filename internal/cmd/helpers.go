@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"net/http"
 	"net/url"
 	"os"
 	"regexp"
@@ -135,7 +136,7 @@ func parseID(arg string, guid bool) (string, error) {
 	if guid && isGUID(arg) {
 		return arg, nil
 	}
-	return "", fmt.Errorf("invalid id %q (want a number)", arg)
+	return "", fmt.Errorf("invalid id %q: want a numeric id (the ID column of the matching list command)", arg)
 }
 
 // parseIDs splits and validates id arguments ("1,2" "3"), dropping
@@ -323,8 +324,8 @@ type searchOpts struct {
 
 func (s *searchOpts) register(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&s.query, "query", "q", "", "full-text search term")
-	cmd.Flags().StringVar(&s.fq, "fq", "", `filter query: field='value' clauses joined with AND/OR`)
-	cmd.Flags().StringVar(&s.sort, "sort", "", `sort field, optionally with direction: "lastCheckin:desc"`)
+	cmd.Flags().StringVar(&s.fq, "fq", "", `filter: field='value' clauses joined with AND/OR (fields: the -o json keys)`)
+	cmd.Flags().StringVar(&s.sort, "sort", "", `sort by a field of the -o json output; append ":desc" to reverse`)
 	cmd.Flags().IntVar(&s.limit, "limit", 50, "maximum number of results (0 = all)")
 }
 
@@ -359,6 +360,10 @@ func runSearch(cmd *cobra.Command, c *api.Client, path string, s *searchOpts, ex
 		q[k] = vs
 	}
 	page, err := c.Search(cmd.Context(), path, q, s.limit)
+	var apiErr *api.Error
+	if errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusBadRequest && s.sort != "" {
+		return fmt.Errorf("invalid --sort field %q for this list (sort by a field of its -o json output): %w", strings.Split(s.sort, ":")[0], err)
+	}
 	if err != nil {
 		return err
 	}

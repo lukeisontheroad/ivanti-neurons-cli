@@ -64,8 +64,26 @@ Run "ivanti-neurons docs" for the complete reference in one page
 	root.AddCommand(newBulkCmd())
 	root.AddCommand(newAPICmd())
 	root.AddCommand(newDocsCmd())
+	rejectUnknownSubcommands(root)
 
 	return root
+}
+
+// rejectUnknownSubcommands makes command groups fail on a mistyped
+// subcommand ("device foo") instead of printing help with exit code 0.
+func rejectUnknownSubcommands(c *cobra.Command) {
+	for _, sub := range c.Commands() {
+		if sub.HasSubCommands() && sub.Run == nil && sub.RunE == nil {
+			sub.Args = cobra.ArbitraryArgs
+			sub.RunE = func(cmd *cobra.Command, args []string) error {
+				if len(args) > 0 {
+					return fmt.Errorf("unknown command %q for %q: see %q", args[0], cmd.CommandPath(), cmd.CommandPath()+" --help")
+				}
+				return cmd.Help()
+			}
+		}
+		rejectUnknownSubcommands(sub)
+	}
 }
 
 func validateOutput() error {

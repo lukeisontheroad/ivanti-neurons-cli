@@ -102,8 +102,17 @@ func TestAppEligiblePrintsGUIDs(t *testing.T) {
 	})
 }
 
+// appVersionRoutes answers the configuration-type probe that tells version
+// ids from app ids, and one INSTALL configuration (276183).
+func appVersionRoutes(m *mock) {
+	m.on("GET /api/v1/app/version/{id}/config/types", `{"errors":null,"result":{"INSTALL":{}}}`)
+	m.on("GET /api/v1/app/version/{id}/config", `{"errors":null,"result":{"totalCount":1,"searchResults":[{"id":276183,"type":"INSTALL","name":"ForDocs"}]}}`)
+	m.on("GET /api/v1/app/version/{id}/config/{cid}", `{"errors":null,"result":{"id":276183,"type":"INSTALL","name":"ForDocs","groupIds":[50918],"accountIds":[],"deviceIds":[],"ruleGroupIds":[]}}`)
+}
+
 func TestAppGetCommands(t *testing.T) {
 	m := newMock(t)
+	appVersionRoutes(m)
 	m.on("GET /api/v1/asynctask/status/{id}", `{"errors":null,"result":{"taskUuid":"8cf7b560-1172-418e-a9cc-0db7197ffe9f","taskType":"CLEAR_CONFIG_ERROR","taskStatus":"COMPLETE","errorConfigsCleared":56}}`)
 	m.on("GET /api/v1/app/version/{id}/distribution", `{"errors":null,"result":{"applicationVersionId":147803,"appDistributionMutable":true}}`)
 	out := m.run(t, "app", "task", "status", "8cf7b560-1172-418e-a9cc-0db7197ffe9f")
@@ -289,15 +298,15 @@ func TestAppWrites(t *testing.T) {
 			route: "POST /api/v1/app/version/{id}/config", resp: `{"errors":null,"result":276182}`,
 			method: "POST", path: "/api/v1/app/version/121646/config",
 			body: `{"type":"INSTALL","name":"ForDocs","groupIds":[50918],"settings":{"type":"INSTALL","required":true,"priority":"LOW"}}`,
-			out:  "Created app config 276182",
+			out:  "Created INSTALL configuration 276182 for app version 121646",
 		},
 		{
 			name:  "config update",
 			args:  []string{"app", "config", "update", "121646", "276183", "--data", `{"id":999,"applicationVersionId":998}`, "-f", "name=ForDocs", "-f", "priority=1"},
 			route: "PUT /api/v1/app/version/{id}/config/{cid}", resp: `{"errors":null,"result":276183}`,
 			method: "PUT", path: "/api/v1/app/version/121646/config/276183",
-			body: `{"id":276183,"applicationVersionId":121646,"type":"INSTALL","name":"ForDocs","priority":1}`,
-			out:  "Updated app config 276183",
+			body: `{"id":276183,"applicationVersionId":121646,"type":"INSTALL","name":"ForDocs","priority":1,"groupIds":[50918],"accountIds":[],"deviceIds":[],"ruleGroupIds":[]}`,
+			out:  "Updated configuration 276183 of app version 121646",
 		},
 		{
 			name:  "attrs set version",
@@ -349,6 +358,7 @@ func TestAppWrites(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			m := newMock(t)
+			appVersionRoutes(m)
 			m.on(tc.route, tc.resp)
 			out := m.run(t, tc.args...)
 			mustContain(t, out, tc.out)

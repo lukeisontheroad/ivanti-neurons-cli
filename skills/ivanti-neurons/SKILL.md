@@ -45,5 +45,8 @@ consumption. Prefer it over multiple `--help` calls.
   then pass `--yes`. Never wipe or retire on your own initiative.
 - `message`, `lock`, `lost mode` and PIN/invite commands notify end users —
   confirm the text and recipients first.
+- App configurations: `app config get <app> <config>` shows what a managed
+  configuration pushes; change single keys with `app config set` (prints the
+  diff, keeps the assignments) rather than hand-editing JSON with `update`.
 - `ivanti-neurons api <method> <path>` reaches any endpoint when no
   dedicated command exists.

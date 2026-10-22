@@ -64,7 +64,7 @@ With -o json it is printed as the API returns it (a JSON string).`,
 	},
 	{
 		use: "refresh-token <id>", short: "Replace a profile's enrollment token with a new one", method: http.MethodPut, suffix: "/refreshtoken",
-		long:    "Generate a new enrollment token. The old token and QR code stop working for devices that have not enrolled yet. The token expiry resets to 7 days from now (observed); change it with \"bulk set-expiry\".",
+		long:    "Generate a new enrollment token. The old token and QR code stop working for devices that have not enrolled yet. The token expiry resets to 7 days from now; change it with \"bulk set-expiry\".",
 		confirm: "replace the enrollment token of bulk profile %s",
 	},
 	{
@@ -169,7 +169,7 @@ func bulkUpdateCmd() *cobra.Command {
 		Use:   "update <id>",
 		Short: "Rename a bulk enrollment profile or change its description",
 		Long: `Change a profile's name or description (PUT {id, name, description},
-observed). The call replaces both fields, so the current values are
+which replaces both fields), so the current values are
 loaded and sent back for whichever flag is not given.`,
 		Example: `  ivanti-neurons bulk update 3 --name scanners --description "Warehouse scanners"`,
 		Args:    cobra.ExactArgs(1),
@@ -495,7 +495,7 @@ func bulkDeviceEditCmd() *cobra.Command {
 		Use:   "edit <id> <record-id>",
 		Short: "Edit a device record in a bulk profile",
 		Long: `Edit a device record. <record-id> is the id column of "bulk device list".
-The PUT replaces the whole record (observed), so this loads the current
+The PUT replaces the whole record, so this loads the current
 record and sends it back with only the given fields changed.`,
 		Example: `  ivanti-neurons bulk device edit 1 109 --serial RZ8K314XFY76 --attrs "site=berlin"`,
 		Args:    cobra.ExactArgs(2),

@@ -132,6 +132,27 @@ viability checks, and the writes listed below):
   `bulk configure` remains unverified.
 - App attribute PATCH without `forceOverwrite` leaves existing values
   unchanged.
+- App configurations: one list per type (`GET .../version/{vid}/config?type=`
+  — `type` is required), the types of a version from `.../config/types`.
+  The lists omit the assignments; `GET .../version/{vid}/config/{id}` (not
+  in the guide) returns them (`groupIds`, `accountIds`, `deviceIds`,
+  `ruleGroupIds`). `PUT .../config/{id}` replaces the assignments too — a
+  body without them unassigns the configuration — and rejects
+  `settings.configuration.uuid` unless null. `app config set/update` build
+  the body from the single GET (`appConfigPutBody`) and refuse to write when
+  the assignments are unknown.
+- Android managed configurations (`ANDROID_FOR_WORK`) keep their keys in
+  `settings.configuration.restrictions`: key → {type BOOL|STRING|INTEGER|
+  CHOICE|MULTISELECT|…, enabled (= pushed), value, title, entry[],
+  entryValue[]}. CHOICE values are the `entryValue` strings.
+- Version-scoped app endpoints answer 403 for an app id; `appVersionArg`
+  resolves app ids to their latest version instead. Generally the API
+  answers 403 (not 404) for many ids that do not exist.
+- Undocumented calls the CLI uses: `GET /api/v1/account/{id}` (account by
+  id) and `GET /api/v1/app/version/{vid}/config/{id}` (configuration with
+  assignments); both answer `result: null` for an unknown id.
+- Account `fq` ignores `id=`; `ACCOUNTGROUP='<name>'` lists group members;
+  device `fq` takes `ownerId=` and `lastCheckin>'d:hh:mm:ss'` (older than).
 
 ### Doc quirks resolved (unconfirmed unless listed above)
 
@@ -202,6 +223,11 @@ example disagree, the CLI follows the curl example. Notable decisions:
   tests capture output that way. Informational asides go to stderr so
   `-o json | jq` stays clean.
 - Errors: return them; root command has `SilenceUsage` — no manual usage dumps.
+- `docs` tags every command [read]/[write]/[destructive] from the
+  `docsReadOnly`/`docsDestructive` lists in `docs.go` (default [write]); add
+  new read-only or destructive commands there (a test checks the paths).
+  Write help for an LLM reader: name the command that produces each id,
+  give a next step in every error, no maintainer notes in help texts.
 - `internal/cmd/coverage_test.go` maps every documented endpoint to the
   command that calls it and checks the request (and that `-o yaml` fails
   before any request). A new or changed endpoint must be reflected there.

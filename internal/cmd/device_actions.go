@@ -215,9 +215,12 @@ required.`,
 	{
 		use:   "enable-lost-mode <id>...",
 		short: "Enable lost mode on iOS devices",
-		long: `Enable lost mode (iOS only): the device locks and shows --message (required)
-and --phone. --footnote sets the lock screen footnote (15 characters max).
-Requires the Device Management role.`,
+		long: `Enable lost mode: the device locks and shows --message (required) and
+--phone. --footnote sets the lock screen footnote (15 characters max).
+Requires a supervised iOS device and the Device Management role. The API has
+no viability check for enabling; "device view <id>" shows "supervised", and
+"device disable-lost-mode <id> --check" reports DEVICE_NOT_SUPERVISED for
+devices lost mode cannot work on.`,
 		example: `  ivanti-neurons device enable-lost-mode 121073 --message "This device has been lost. Please call the number below." --phone 555-555-5555 --footnote "Lost Phone"`,
 		path:    "enableLostMode",
 		flags: []actionFlag{
@@ -231,9 +234,10 @@ Requires the Device Management role.`,
 	{
 		use:   "disable-lost-mode <id>...",
 		short: "Disable lost mode on iOS devices",
-		long: `Disable lost mode (iOS only), restoring the device into service. --check
-only runs the viability check (lists devices that are not in lost mode).
-Requires the Device Management role.`,
+		long: `Disable lost mode (supervised iOS only), restoring the device into service.
+--check only runs the viability check: it lists ineligible devices with the
+reason (e.g. DEVICE_NOT_SUPERVISED, not in lost mode). Requires the Device
+Management role.`,
 		path:  "disableLostMode",
 		check: http.MethodGet,
 		done:  "Disabled lost mode on %d device(s)",
@@ -247,7 +251,8 @@ policies from a company-owned device, releasing it for personal use.
 
 Before sending, the viability check runs (it returns the number of eligible
 devices): if any device is not eligible, nothing is sent. Then asks for
-confirmation (--yes skips it). --check only runs the check.`,
+confirmation (--yes skips it). --check only runs the check; unlike the other
+actions' checks it is a PUT request (with checkViability=true).`,
 		example: `  ivanti-neurons device relinquish 909 --check
   ivanti-neurons device relinquish 909 --yes`,
 		path:    "relinquishOwnership",
@@ -319,7 +324,7 @@ func actionCmd(s actionSpec) *cobra.Command {
 
 			if check || s.confirm != "" && s.check != "" {
 				if len(guids) > 0 {
-					return fmt.Errorf("the viability check takes numeric device ids, not GUIDs")
+					return fmt.Errorf("the viability check takes numeric device ids, not GUIDs: \"ivanti-neurons device view <guid>\" shows the id")
 				}
 				raw, rejected, bad, err := actionCheck(cmd, client, s, ids)
 				if err != nil {

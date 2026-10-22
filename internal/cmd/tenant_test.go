@@ -16,7 +16,7 @@ func TestTenantMetadataStatusLicense(t *testing.T) {
 
 	m.on("GET /api/v1/tenant/license/usage", `{"errors":null,"result":{"billingType":"SUBSCRIPTION","licenseSkus":["PLATINUM"],"displayName":"Platinum","licenseType":"DEVICE","licenseStatus":"ACTIVATED","startDate":1714975231998,"durationInDays":365,"licenseTerm":{"softLimit":1000,"hardLimit":0,"currentUsage":1},"accountTerm":{"softLimit":0,"hardLimit":0,"currentUsage":248},"contentTerm":null,"activeDeviceCount":1,"trial":true}}`)
 	out := m.run(t, "tenant", "license", "--fields", "licenseTerm,accountTerm")
-	mustContain(t, out, "Platinum", "2024-05-06", `"currentUsage":248`)
+	mustContain(t, out, "Platinum", "2024-05-06", "currentUsage=248")
 	wantQuery(t, m.last(t, "GET", "/api/v1/tenant/license/usage").Query, map[string]string{"requestedFields": "licenseTerm,accountTerm"})
 }
 
