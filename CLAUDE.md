@@ -245,7 +245,8 @@ no trailing period; optional scope = command or package name
 
 Fully automated: release-please watches `main`, maintains a release PR with
 the next semver version + CHANGELOG.md from conventional commits; merging it
-creates the `v*` tag, which triggers goreleaser
-(`.github/workflows/release.yml`): darwin/linux/windows binaries + Homebrew
+creates the `v*` tag and release, then the same workflow runs goreleaser
+(`.github/workflows/release.yml`, reusable; dispatch it on a tag ref to
+rebuild by hand): darwin/linux/windows binaries + Homebrew
 cask pushed to `lukeisontheroad/homebrew-tap` (needs `HOMEBREW_TAP_TOKEN`
 secret — PAT with repo scope on the tap repo). Never tag manually.
