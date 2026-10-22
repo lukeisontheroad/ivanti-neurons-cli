@@ -86,13 +86,15 @@ tenant's default space is used unless you pass `--space <id|name>` or set
 ## Usage
 
 Every command has `--help`; `ivanti-neurons docs` prints the whole reference
-in one page. Highlights:
+in one page (ids, common questions, filter syntax, every command tagged
+read/write/destructive), `ivanti-neurons docs device` one group. Highlights:
 
 ### Devices
 
 ```sh
 ivanti-neurons device list --platform ios --status active
 ivanti-neurons device list --email jane@example.com
+ivanti-neurons device list --not-checked-in-within 30d             # stale devices
 ivanti-neurons device list --attr cityId=SF --fq "CFLDAP[department]='Sales'"
 ivanti-neurons device list --limit 0 -o json > devices.json   # all devices, paged automatically
 ivanti-neurons device with-app com.example.app --platform IOS  # devices with an app installed

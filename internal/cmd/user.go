@@ -99,9 +99,19 @@ func userShowCmd(use, short, path string, cols []string) *cobra.Command {
 	}
 }
 
-// userByUID returns the account whose UID is uid. The fq filter may match
-// more than one account, so the UID is compared exactly.
+// userByUID returns the account with this UID or, for a numeric argument,
+// account id (GET /api/v1/account/{id}, which the API guide omits). The fq
+// filter may match more than one account, so the UID is compared exactly.
 func userByUID(cmd *cobra.Command, c *api.Client, uid string) (json.RawMessage, error) {
+	if id, err := parseID(uid, false); err == nil {
+		raw, err := c.Get(cmd.Context(), "/api/v1/account/"+id, nil)
+		if err == nil && string(bytes.TrimSpace(raw)) != "null" {
+			return raw, nil
+		}
+		if !appNotFound(err) && err != nil {
+			return nil, err
+		}
+	}
 	raw, err := c.Get(cmd.Context(), "/api/v1/account", params("fq", "UID="+uid))
 	if err != nil {
 		return nil, err
@@ -118,7 +128,7 @@ func userByUID(cmd *cobra.Command, c *api.Client, uid string) (json.RawMessage, 
 			return r, nil
 		}
 	}
-	return nil, fmt.Errorf("no account with UID %q", uid)
+	return nil, fmt.Errorf("no account with UID or id %q: use the UID or ID column of \"ivanti-neurons user list\"", uid)
 }
 
 func userListCmd() *cobra.Command {
@@ -151,10 +161,11 @@ filter such as "UID=jdoe@example.com". Results are sorted by id unless
 
 func userViewCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:     "view <uid>",
-		Short:   "Show a user account by UID (usually the email address)",
-		Example: `  ivanti-neurons user view jdoe@example.com`,
-		Args:    cobra.ExactArgs(1),
+		Use:   "view <uid|account-id>",
+		Short: "Show a user account by UID (usually the email) or account id",
+		Example: `  ivanti-neurons user view jdoe@example.com
+  ivanti-neurons user view 10542407`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := newClient()
 			if err != nil {
@@ -203,9 +214,9 @@ func userSearchCmd() *cobra.Command {
 enrollment flow uses to find the user to associate with a profile. Returns
 one page (up to 500 results).
 
-The guide does not document this call's parameters: --query, --fq, --sort
-and --limit are sent as query parameters as for "user list", and --data
-sends a JSON body as-is. Prefer "user list" for general searches.`,
+Its parameters are not documented: --query, --fq, --sort and --limit are
+sent as query parameters as for "user list", and --data sends a JSON body
+as-is. Prefer "user list" for general searches.`,
 		Example: `  ivanti-neurons user search -q jdoe`,
 		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -339,9 +350,9 @@ func userUpdateCmd() *cobra.Command {
 	var enabled bool
 	var fields []string
 	cmd := &cobra.Command{
-		Use:   "update <uid>",
+		Use:   "update <uid|account-id>",
 		Short: "Update a user account's name, email, password, or enabled state",
-		Long: `Update a user account (PUT /api/v1/account), looked up by UID.
+		Long: `Update a user account (PUT /api/v1/account), looked up by UID or account id.
 
 The API clears every editable field missing from the call (names, email,
 enabled, managedAppleId, edipi, gdprProfileId, ...), so this command loads

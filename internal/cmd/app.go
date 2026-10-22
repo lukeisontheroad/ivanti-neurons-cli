@@ -93,6 +93,14 @@ func appGetCmd(use, short, path string, cols []string) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if strings.HasSuffix(path, "/distribution") && string(bytes.TrimSpace(raw)) == "null" {
+				// the API answers null for a version distributed to nobody
+				if flagOutput != "json" {
+					fmt.Fprintln(cmd.ErrOrStderr(), "Not distributed to anyone.")
+					return nil
+				}
+				raw = json.RawMessage(`{"accounts":[],"groups":[],"devices":[],"ruleGroups":[]}`)
+			}
 			return render(cmd, raw, cols)
 		},
 	}
@@ -478,9 +486,8 @@ paged v1 inventory search (supports --query, --fq, --sort, --limit);
 with several ids, or --v2, the v2 inventory call, which adds usage
 counters and install/source types per app.
 
-The v1 call has been rate-limited by Ivanti to 30 calls per minute per
-user (newer API guides say the limit was lifted); HTTP 429 responses are
-retried automatically. --facet-fq filters on install facets, e.g. to hide
+The v1 call may be rate-limited to 30 calls per minute per user; HTTP 429
+responses are retried automatically. --facet-fq filters on install facets, e.g. to hide
 system apps.`,
 		Example: `  ivanti-neurons app inventory device 22115
   ivanti-neurons app inventory device 22115 --facet-fq "INSTALLTYPE != 'SYSTEM_APP' AND INSTALLTYPE != 'UPDATED_SYSTEM_APP'"

@@ -99,7 +99,7 @@ func (e *Error) Error() string {
 	case e.StatusCode == http.StatusUnauthorized:
 		s += "\nhint: check the credentials; Basic auth fails for API users with MFA — use an OIDC client (`auth login --client-id`)"
 	case e.StatusCode == http.StatusForbidden:
-		s += "\nhint: the API user's role lacks the permission for this call (or the object is in another device space)"
+		s += "\nhint: Ivanti answers 403 for ids that do not exist, too: check the id and its kind (\"ivanti-neurons docs\" lists which command gives which id), the device space (--space), then the API user's roles"
 	}
 	return s
 }

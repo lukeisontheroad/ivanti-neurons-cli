@@ -114,6 +114,8 @@ var coverage = []struct {
 
 	// users
 	{"GET", "/api/v1/account", nil, []string{"user", "list"}, nil},
+	{"GET", "/api/v1/account/7", nil, []string{"user", "view", "7"},
+		map[string]string{"GET /api/v1/account/7": `{"errors":null,"result":{"id":7,"uid":"jdoe@example.com"}}`}},
 	{"GET", "/api/v1/account", map[string]string{"fq": "UID=jdoe@example.com"}, []string{"user", "view", "jdoe@example.com"},
 		map[string]string{"GET /api/v1/account": `{"errors":null,"result":{"totalCount":1,"searchResults":[{"id":7,"uid":"jdoe@example.com"}]}}`}},
 	{"GET", "/api/v1/account", map[string]string{"uid": "jdoe@example.com"}, []string{"user", "exists", "jdoe@example.com"}, nil},

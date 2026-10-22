@@ -43,11 +43,15 @@ Typical flow for an Android managed configuration:
 }
 
 // appVersionFlags registers --version (pick a version of an app id) and,
-// with types, --type.
-func appVersionFlags(cmd *cobra.Command, version, configType *string) {
+// with typeUsage, --type.
+func appVersionFlags(cmd *cobra.Command, version, configType *string, typeUsage ...string) {
 	cmd.Flags().StringVar(version, "version", "", "when the argument is an app id: the version to use (version id or display version; default: latest)")
 	if configType != nil {
-		cmd.Flags().StringVar(configType, "type", "", "only this configuration type, e.g. ANDROID_FOR_WORK (default: all types)")
+		usage := "only this configuration type, e.g. ANDROID_FOR_WORK (default: all types)"
+		if len(typeUsage) > 0 {
+			usage = typeUsage[0]
+		}
+		cmd.Flags().StringVar(configType, "type", "", usage)
 	}
 }
 
@@ -166,7 +170,8 @@ func appTypesFilter(types []string, only string) ([]string, error) {
 // missing from the API guide; the documented per-type lists lack the
 // assignments, so a tenant without it falls back to them (read-only use).
 func appConfig(cmd *cobra.Command, c *api.Client, vid, cfgID string, types []string) (map[string]any, error) {
-	if raw, err := c.Get(cmd.Context(), "/api/v1/app/version/"+vid+"/config/"+cfgID, nil); err == nil {
+	// an id that is no configuration of this version answers "result": null
+	if raw, err := c.Get(cmd.Context(), "/api/v1/app/version/"+vid+"/config/"+cfgID, nil); err == nil && string(bytes.TrimSpace(raw)) != "null" {
 		var cfg map[string]any
 		dec := json.NewDecoder(bytes.NewReader(raw))
 		dec.UseNumber()
@@ -174,7 +179,7 @@ func appConfig(cmd *cobra.Command, c *api.Client, vid, cfgID string, types []str
 			return nil, fmt.Errorf("decode configuration: %w", err)
 		}
 		return cfg, nil
-	} else if !appNotFound(err) {
+	} else if err != nil && !appNotFound(err) {
 		return nil, err
 	}
 	for _, t := range types {
@@ -271,11 +276,13 @@ func appConfigGetCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get <version-id|app-id> <config-id>",
 		Short: "Show one configuration; for a managed configuration, the keys it pushes",
-		Long: `Show one configuration. For an Android managed configuration
-(ANDROID_FOR_WORK) it lists the keys that are enabled, i.e. pushed to the
-devices, with their values: what the app gets. --all lists every key the app
-supports, with an ENABLED column. Other types print their settings. -o json
-prints the full configuration object.`,
+		Long: `Show one configuration with its assignments (groupIds, accountIds, ...).
+For an Android managed configuration (ANDROID_FOR_WORK) it lists the keys
+that are enabled, i.e. pushed to the devices, with their values (what the
+app gets), followed by the pushed app permission grants and app settings
+(autoLaunch, blockUninstall, ...). --all lists every key the app supports,
+with an ENABLED column. Other types print their settings. -o json prints the
+full configuration object.`,
 		Example: `  ivanti-neurons app config get 16005 276183
   ivanti-neurons app config get 121646 276183 --all
   ivanti-neurons app config get 121646 276183 -o json`,
@@ -324,7 +331,11 @@ prints the full configuration object.`,
 				if !on && !all {
 					continue
 				}
-				row := []string{k, output.Format("", e["type"]), output.Truncate(output.Format("", e["title"]), 45), appRestrictionValue(e)}
+				title := output.Truncate(output.Format("", e["title"]), 45)
+				if on && e["title"] == nil && e["value"] == nil {
+					title = "(enabled, no value; not in the app's current schema)"
+				}
+				row := []string{k, output.Format("", e["type"]), title, appRestrictionValue(e)}
 				if all {
 					row = slices.Insert(row, 1, fmt.Sprint(on))
 				}
@@ -332,13 +343,19 @@ prints the full configuration object.`,
 			}
 			if len(rows) == 0 {
 				fmt.Fprintf(cmd.ErrOrStderr(), "No keys enabled (%d available: --all lists them).\n", len(r))
-				return nil
+			} else {
+				output.Table(out, headers, rows)
 			}
-			output.Table(out, headers, rows)
+			// app permission grants and app behaviour are pushed too
+			settings, _ := cfg["settings"].(map[string]any)
+			conf, _ := settings["configuration"].(map[string]any)
+			extra, _ := json.Marshal(conf)
+			fmt.Fprintln(out)
+			output.KV(out, extra, []string{"androidWorkAppPermissionPolicies", "autoLaunch", "blockUninstall", "blockWidget", "hideRestrictions"})
 			return nil
 		},
 	}
-	appVersionFlags(cmd, &version, &configType)
+	appVersionFlags(cmd, &version, &configType, "type of <config-id>, to skip detecting it (e.g. ANDROID_FOR_WORK)")
 	cmd.Flags().BoolVar(&all, "all", false, "list every key, enabled or not")
 	return cmd
 }
@@ -442,7 +459,7 @@ with --data.`,
 			return nil
 		},
 	}
-	appVersionFlags(cmd, &version, &configType)
+	appVersionFlags(cmd, &version, &configType, "type of <config-id>, to skip detecting it (e.g. ANDROID_FOR_WORK)")
 	return cmd
 }
 
@@ -592,7 +609,7 @@ type (default INSTALL). Prints the new configuration id.`,
 			return report(cmd, raw, fmt.Sprintf("Created %v configuration %s for app version %s", body["type"], raw, vid))
 		},
 	}
-	appVersionFlags(cmd, &version, &configType)
+	appVersionFlags(cmd, &version, &configType, "configuration type to create (default INSTALL)")
 	appDataFlags(cmd, &data, &fields)
 	return cmd
 }
@@ -662,7 +679,7 @@ full edit start from "app config get ... -o json".`,
 			return report(cmd, raw, fmt.Sprintf("Updated configuration %s of app version %s", cfgID, vid))
 		},
 	}
-	appVersionFlags(cmd, &version, &configType)
+	appVersionFlags(cmd, &version, &configType, "configuration type to send (default: the body's, else the current one)")
 	appDataFlags(cmd, &data, &fields)
 	return cmd
 }
@@ -676,9 +693,8 @@ key for several values. Commands act on an app version id; update and
 delete take --app to act on an app id instead, or on several
 comma-separated app ids at once.
 
-Per the API guide, an update on an app version removes the version's
-attributes that the call does not name: pass every existing key ("app attrs
-get <version-id>").`,
+An update on an app version can remove the attributes it does not name:
+pass every existing key ("app attrs get <version-id>" lists them).`,
 	}
 	cmd.AddCommand(
 		appGetCmd("get <version-id|app-id>", "Show an app version's custom attributes", "/api/v1/app/version/{id}/customattributes", nil),

@@ -53,7 +53,41 @@ func TestConfirmRefusesWithoutTTY(t *testing.T) {
 func TestDocsListsCommands(t *testing.T) {
 	m := newMock(t)
 	out := m.run(t, "docs")
-	mustContain(t, out, "### ivanti-neurons auth login", "### ivanti-neurons api", "--fq")
+	mustContain(t, out, "### ivanti-neurons auth login [write]", "### ivanti-neurons api [read or write",
+		"### ivanti-neurons device wipe [destructive; --check is read-only]", "### ivanti-neurons device list [read]",
+		"## Ids:", "## Common questions", "List flags: -q/--query")
+	if strings.Contains(out, "--fq string") {
+		t.Error("shared list flags should be explained once, not per command")
+	}
+	device := m.run(t, "docs", "device")
+	if strings.Contains(device, "## Setup") || !strings.Contains(device, "### ivanti-neurons device view") || strings.Contains(device, "### ivanti-neurons user list") {
+		t.Error("docs device should print only the device commands")
+	}
+	if _, err := m.runErr(t, "docs", "nope"); err == nil {
+		t.Error("docs nope: want an error")
+	}
+}
+
+// The safety tag lists must name real commands, or renamed commands would
+// silently become [write].
+func TestDocsTagPathsExist(t *testing.T) {
+	root := newRootCmd("test")
+	for _, path := range append(append([]string{}, docsReadOnly...), docsDestructive...) {
+		c, rest, err := root.Find(strings.Fields(path))
+		if err != nil || len(rest) > 0 || c.HasSubCommands() || c.CommandPath() != "ivanti-neurons "+path {
+			t.Errorf("tagged command %q does not exist", path)
+		}
+	}
+}
+
+func TestUnknownSubcommandFails(t *testing.T) {
+	m := newMock(t)
+	for _, args := range [][]string{{"device", "foo"}, {"group", "members", "list", "1"}} {
+		if _, err := m.runErr(t, args...); err == nil || !strings.Contains(err.Error(), "unknown command") {
+			t.Errorf("%v: err = %v", args, err)
+		}
+	}
+	m.run(t, "device") // a bare group still prints its help
 }
 
 func basicAuth(r request) (string, string, bool) {

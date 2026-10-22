@@ -229,7 +229,7 @@ on a device or user is done with the device and user commands.`,
 			return renderItems(cmd, page.SearchResults, cols)
 		}),
 	}
-	list.Flags().StringVar(&listType, "type", "", "only this type: account, device, AAD, or LDAP")
+	list.Flags().StringVar(&listType, "type", "", "only this type: account, device, app, AAD, or LDAP (case-insensitive)")
 
 	var createType, dataType string
 	var createPreserved bool
