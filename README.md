@@ -140,9 +140,9 @@ ivanti-neurons app list --type IN_HOUSE
 ivanti-neurons app store search itunes "Microsoft Outlook"
 ivanti-neurons app inventory device 22184
 ivanti-neurons app install devices com.example.app <device-guid> --async
-ivanti-neurons app config list 373189                       # every configuration type; app id or version id
-ivanti-neurons app config get 373189 1121999                # managed config: the keys devices get
-ivanti-neurons app config set 373189 1121999 HomepageLocation=https://intranet.example ProxySettings=
+ivanti-neurons app config list 16005                       # every configuration type; app id or version id
+ivanti-neurons app config get 16005 276183                # managed config: the keys devices get
+ivanti-neurons app config set 16005 276183 HomepageLocation=https://intranet.example ProxySettings=
 ivanti-neurons app task list
 ivanti-neurons config list
 ivanti-neurons config assign 35140 38002

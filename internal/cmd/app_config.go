@@ -33,9 +33,9 @@ picks another: a version id or display version). The App API works on the
 default device space only.
 
 Typical flow for an Android managed configuration:
-  ivanti-neurons app config list 373189                   # find the ANDROID_FOR_WORK config id
-  ivanti-neurons app config get 373189 1121999            # keys the devices get
-  ivanti-neurons app config set 373189 1121999 HomepageLocation=https://intranet.example`,
+  ivanti-neurons app config list 16005                   # find the ANDROID_FOR_WORK config id
+  ivanti-neurons app config get 16005 276183            # keys the devices get
+  ivanti-neurons app config set 16005 276183 HomepageLocation=https://intranet.example`,
 	}
 	cmd.AddCommand(appConfigListCmd(), appConfigGetCmd(), appConfigSetCmd(), appConfigTypesCmd(),
 		appConfigCreateCmd(), appConfigUpdateCmd())
@@ -239,8 +239,8 @@ func appConfigListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list <version-id|app-id>",
 		Short: "List an app version's configurations of every type",
-		Example: `  ivanti-neurons app config list 437362
-  ivanti-neurons app config list 373189 --type ANDROID_FOR_WORK   # app id: latest version`,
+		Example: `  ivanti-neurons app config list 121646
+  ivanti-neurons app config list 16005 --type ANDROID_FOR_WORK   # app id: latest version`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := newClient()
@@ -276,9 +276,9 @@ func appConfigGetCmd() *cobra.Command {
 devices, with their values: what the app gets. --all lists every key the app
 supports, with an ENABLED column. Other types print their settings. -o json
 prints the full configuration object.`,
-		Example: `  ivanti-neurons app config get 373189 1121999
-  ivanti-neurons app config get 437362 1121999 --all
-  ivanti-neurons app config get 437362 1121999 -o json`,
+		Example: `  ivanti-neurons app config get 16005 276183
+  ivanti-neurons app config get 121646 276183 --all
+  ivanti-neurons app config get 121646 276183 -o json`,
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfgID, err := parseID(args[1], false)
@@ -377,8 +377,8 @@ assignments (the API replaces both); the changes are printed. Nothing is
 sent when nothing changes. Other key
 types (MULTISELECT, BUNDLE) and other configuration types: "app config update"
 with --data.`,
-		Example: `  ivanti-neurons app config set 373189 1121999 HomepageLocation=https://intranet.example
-  ivanti-neurons app config set 373189 1121999 DisableAuthNegotiateCnameLookup=true ProxySettings=`,
+		Example: `  ivanti-neurons app config set 16005 276183 HomepageLocation=https://intranet.example
+  ivanti-neurons app config set 16005 276183 DisableAuthNegotiateCnameLookup=true ProxySettings=`,
 		Args: cobra.MinimumNArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfgID, err := parseID(args[1], false)
@@ -611,8 +611,8 @@ ruleGroupIds) are kept unless the body sets them: the API replaces them on
 every update, so leaving them out would unassign the configuration. To
 change single keys of a managed configuration, use "app config set"; for a
 full edit start from "app config get ... -o json".`,
-		Example: `  ivanti-neurons app config get 437362 1121999 -o json > cfg.json   # edit, then:
-  ivanti-neurons app config update 437362 1121999 --data @cfg.json
+		Example: `  ivanti-neurons app config get 121646 276183 -o json > cfg.json   # edit, then:
+  ivanti-neurons app config update 121646 276183 --data @cfg.json
   ivanti-neurons app config update 121646 276183 -f name=ForDocs -f priority=1 \
     -f settings='{"type":"INSTALL","required":true,"autoUpdate":true,"priority":"LOW"}'`,
 		Args: cobra.ExactArgs(2),
