@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/lukeisontheroad/ivanti-neurons-cli/compare/v0.1.0...v0.2.0) (2026-10-22)
+
+
+### Features
+
+* **app:** read and edit app configurations of every type ([#7](https://github.com/lukeisontheroad/ivanti-neurons-cli/issues/7)) ([fa92322](https://github.com/lukeisontheroad/ivanti-neurons-cli/commit/fa923224b1db3c36816fced842ffcbeee9f70d13))
+
 ## 0.1.0 (2026-10-22)
 
 
