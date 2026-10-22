@@ -97,6 +97,10 @@ func printCmdDocs(w io.Writer, c *cobra.Command) {
 	if c.Hidden || c.Name() == "help" || c.Name() == "completion" {
 		return
 	}
+	if !c.Runnable() && c.Long != "" && c.HasParent() {
+		// group commands carry the concepts their subcommands share
+		fmt.Fprintf(w, "### %s (group)\n%s\n\n", c.CommandPath(), c.Long)
+	}
 	if c.Runnable() && c.Name() != "docs" {
 		fmt.Fprintf(w, "### %s\n", c.CommandPath())
 		fmt.Fprintf(w, "Usage: %s\n", c.UseLine())

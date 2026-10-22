@@ -132,6 +132,21 @@ viability checks, and the writes listed below):
   `bulk configure` remains unverified.
 - App attribute PATCH without `forceOverwrite` leaves existing values
   unchanged.
+- App configurations: one list per type (`GET .../version/{vid}/config?type=`
+  — `type` is required), the types of a version from `.../config/types`.
+  The lists omit the assignments; `GET .../version/{vid}/config/{id}` (not
+  in the guide) returns them (`groupIds`, `accountIds`, `deviceIds`,
+  `ruleGroupIds`). `PUT .../config/{id}` replaces the assignments too — a
+  body without them unassigns the configuration — and rejects
+  `settings.configuration.uuid` unless null. `app config set/update` build
+  the body from the single GET (`appConfigPutBody`) and refuse to write when
+  the assignments are unknown.
+- Android managed configurations (`ANDROID_FOR_WORK`) keep their keys in
+  `settings.configuration.restrictions`: key → {type BOOL|STRING|INTEGER|
+  CHOICE|MULTISELECT|…, enabled (= pushed), value, title, entry[],
+  entryValue[]}. CHOICE values are the `entryValue` strings.
+- Version-scoped app endpoints answer 403 for an app id; `appVersionArg`
+  resolves app ids to their latest version instead.
 
 ### Doc quirks resolved (unconfirmed unless listed above)
 
