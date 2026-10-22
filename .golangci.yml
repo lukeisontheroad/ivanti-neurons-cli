@@ -1,0 +1,29 @@
+version: "2"
+
+linters:
+  default: standard # errcheck, govet, ineffassign, staticcheck, unused
+  enable:
+    - misspell
+    - unconvert
+    - unparam
+    - gocritic
+    - revive
+    - nolintlint
+  settings:
+    errcheck:
+      exclude-functions:
+        # Terminal output and deferred closes: nothing sensible to do on error.
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
+        - (io.ReadCloser).Close
+        - (*text/tabwriter.Writer).Flush
+    revive:
+      rules:
+        - name: exported
+          disabled: true # CLI-internal packages; doc comments where they help, not everywhere
+
+formatters:
+  enable:
+    - gofmt
+    - goimports

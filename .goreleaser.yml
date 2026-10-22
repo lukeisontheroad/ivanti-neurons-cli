@@ -1,0 +1,69 @@
+version: 2
+
+project_name: ivanti-neurons
+
+builds:
+  - id: ivanti-neurons
+    main: ./cmd/ivanti-neurons
+    binary: ivanti-neurons
+    env:
+      - CGO_ENABLED=0
+    goos: [darwin, linux, windows]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+
+archives:
+  - formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+
+checksum:
+  name_template: checksums.txt
+
+# Release notes grouped by Conventional Commit type (see CONTRIBUTING.md).
+changelog:
+  use: git
+  sort: asc
+  filters:
+    exclude:
+      - "^chore"
+      - "^ci"
+      - "^docs"
+      - "^test"
+      - "^style"
+      - "^refactor"
+  groups:
+    - title: Features
+      regexp: '^feat(\(.*\))?!?:'
+      order: 0
+    - title: Bug fixes
+      regexp: '^fix(\(.*\))?!?:'
+      order: 1
+    - title: Performance
+      regexp: '^perf(\(.*\))?!?:'
+      order: 2
+    - title: Other
+      order: 999
+
+homebrew_casks:
+  - name: ivanti-neurons
+    # No tap token configured -> release still succeeds, just without
+    # pushing the formula. Set the HOMEBREW_TAP_TOKEN repo secret to enable.
+    skip_upload: '{{ if .Env.HOMEBREW_TAP_TOKEN }}false{{ else }}true{{ end }}'
+    repository:
+      owner: lukeisontheroad
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    homepage: https://github.com/lukeisontheroad/ivanti-neurons-cli
+    description: Manage Ivanti Neurons for MDM (MobileIron Cloud) from the command line
+    # Unsigned binary: strip the quarantine attribute so macOS runs it.
+    hooks:
+      post:
+        install: |
+          if system_command("/usr/bin/xattr", args: ["-h"]).exit_status == 0
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/ivanti-neurons"]
+          end

@@ -1,0 +1,32 @@
+name: release
+
+# NOTE: tags pushed by release-please's default GITHUB_TOKEN do not trigger
+# this workflow (GitHub anti-recursion rule). Either dispatch it manually on
+# the tag ref, or give release-please a PAT (RELEASE_PLEASE_TOKEN) so its tag
+# pushes fire events.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  goreleaser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # PAT with repo scope on lukeisontheroad/homebrew-tap, set as repo secret:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}

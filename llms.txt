@@ -1,0 +1,23 @@
+# ivanti-neurons-cli
+
+> Command-line client for Ivanti Neurons for MDM (formerly MobileIron Cloud):
+> search and inspect devices, run device actions (lock, wipe, retire,
+> check-in, kiosk, lost mode), manage users, user and device groups, apps,
+> configurations, certificates, bulk enrollment and tenant settings.
+> Single static Go binary, configured via ~/.config/ivanti-neurons/config.yml
+> or IVANTI_URL + IVANTI_USERNAME/IVANTI_PASSWORD (or IVANTI_CLIENT_ID/
+> IVANTI_CLIENT_SECRET) environment variables.
+
+The CLI is self-documenting for LLMs: run `ivanti-neurons docs` for the
+complete command reference in one page. Every read command supports `-o json`.
+
+## Docs
+
+- [README](https://github.com/lukeisontheroad/ivanti-neurons-cli/blob/main/README.md): install, auth, usage
+- [Agent skill](https://github.com/lukeisontheroad/ivanti-neurons-cli/blob/main/skills/ivanti-neurons/SKILL.md): drop-in skill for AI agents operating the CLI
+- [CONTRIBUTING](https://github.com/lukeisontheroad/ivanti-neurons-cli/blob/main/CONTRIBUTING.md): commit convention, release automation
+- [CLAUDE.md](https://github.com/lukeisontheroad/ivanti-neurons-cli/blob/main/CLAUDE.md): architecture and API facts for coding agents
+
+## Optional
+
+- [Ivanti Neurons for MDM API guide](https://help.ivanti.com/mi/help/en_us/CLD/8x/api/default.htm): upstream REST API reference
