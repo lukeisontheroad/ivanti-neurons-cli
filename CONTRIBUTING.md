@@ -60,7 +60,7 @@ Releasing is automated, no manual version picking:
    `main`, collects conventional commits, and maintains a release PR with the
    next semver version and a generated `CHANGELOG.md`.
 2. Merging that PR creates the `v*` tag.
-3. The tag triggers goreleaser: binaries, GitHub release (notes grouped by
+3. The same workflow then runs goreleaser: binaries, GitHub release (notes grouped by
    commit type), and the Homebrew formula update.
 
 ## Development

@@ -1,12 +1,13 @@
 name: release
 
-# NOTE: tags pushed by release-please's default GITHUB_TOKEN do not trigger
-# this workflow (GitHub anti-recursion rule). Either dispatch it manually on
-# the tag ref, or give release-please a PAT (RELEASE_PLEASE_TOKEN) so its tag
-# pushes fire events.
+# Called by release-please when it creates a release; dispatch it on a tag
+# ref to rebuild a release by hand.
 on:
-  push:
-    tags: ["v*"]
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        required: true
   workflow_dispatch:
 
 permissions:
@@ -18,6 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ inputs.ref || github.ref }}
           fetch-depth: 0
       - uses: actions/setup-go@v7
         with:
