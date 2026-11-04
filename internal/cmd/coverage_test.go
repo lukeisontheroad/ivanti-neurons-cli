@@ -15,7 +15,8 @@ const coverageGUID = "57d9903c-aadf-4b40-aef3-e1f24302f180"
 // coverage maps every call documented in the Ivanti Neurons for MDM API
 // guide (and its OpenAPI export) to the command that issues it. Each entry
 // runs against a permissive mock and must send exactly that method + path
-// (plus the listed query values). "FILE" in args becomes a temp file.
+// (plus the listed query values). "FILE" in args becomes a temp file,
+// "CERT" a certificate file.
 // Not listed: POST /oauth2/token (core client, see internal/api tests);
 // PUT .../customattributes on devices and app versions (documented as the
 // same call as POST, which the CLI sends); GET /api/v1/app/devicefilter
@@ -33,6 +34,12 @@ var coverage = []struct {
 	{"GET", "/api/v1/tenant/partition/device", nil, []string{"space", "list"}, nil},
 	{"GET", "/api/v1/policy", map[string]string{"tag": "DEVICE_CONFIGURATION"}, []string{"config", "list"}, nil},
 	{"PUT", "/api/v1/policy/1/rule_groups", map[string]string{"ruleGroupIds": "2"}, []string{"config", "assign", "1", "2"}, nil},
+	{"GET", "/api/v1/policy/1", map[string]string{"dmPartitionId": "23000"}, []string{"config", "view", "1"}, nil},
+	{"GET", "/api/v1/policy/1/distribution", nil, []string{"config", "distribution", "1"}, nil},
+	{"POST", "/api/v1/policy", map[string]string{"policyType": "CERTIFICATE"}, []string{"config", "create", "certificate", "--name", "n", "--file", "CERT"}, nil},
+	{"PUT", "/api/v1/policy/distribution", nil, []string{"config", "distribute", "1", "--device", "2"},
+		map[string]string{"GET /api/v1/policy/1/distribution": `{"errors":null,"result":{"accounts":[],"groups":[],"devices":[],"ruleGroups":[]}}`}},
+	{"DELETE", "/api/v1/policy/1", map[string]string{"dmPartitionId": "23000"}, []string{"config", "delete", "1"}, nil},
 	{"GET", "/api/v1/sentry/config", nil, []string{"config", "sentry"}, nil},
 	{"GET", "/api/v1/ec", nil, []string{"connector", "list"}, nil},
 
@@ -260,10 +267,11 @@ func TestEndpointCoverage(t *testing.T) {
 	if err := os.WriteFile(file, []byte("id,imei\n1,123\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	cert := tempFile(t, "ca.cer", testCertPEM(t))
 	for _, c := range coverage {
 		args := make([]string, len(c.args))
 		for i, a := range c.args {
-			args[i] = strings.ReplaceAll(a, "FILE", file)
+			args[i] = strings.NewReplacer("FILE", file, "CERT", cert).Replace(a)
 		}
 		t.Run(c.method+" "+c.path+" "+strings.Join(c.args, " "), func(t *testing.T) {
 			m := newMockFallback(t, coverageFallback)

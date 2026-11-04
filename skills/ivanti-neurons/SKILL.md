@@ -48,5 +48,10 @@ consumption. Prefer it over multiple `--help` calls.
 - App configurations: `app config get <app> <config>` shows what a managed
   configuration pushes; change single keys with `app config set` (prints the
   diff, keeps the assignments) rather than hand-editing JSON with `update`.
+- Device configurations: `config create certificate` creates a CERTIFICATE
+  configuration distributed to no one; `config distribute` adds devices,
+  users or groups to its distribution (`--replace` overwrites it). Check
+  `config distribution` before and after, and never distribute to broad
+  groups or all devices without the user's explicit go.
 - `ivanti-neurons api <method> <path>` reaches any endpoint when no
   dedicated command exists.

@@ -106,7 +106,7 @@ func spaceCmd() *cobra.Command {
 }
 
 func configCmd() *cobra.Command {
-	cmd := &cobra.Command{Use: "config", Short: "List device configurations, assign them to device groups, list Sentry profiles"}
+	cmd := &cobra.Command{Use: "config", Short: "List, create, distribute and delete device configurations; list Sentry profiles"}
 
 	var opts searchOpts
 	list := &cobra.Command{
@@ -179,7 +179,7 @@ services, and the Sentry appliances (alcors) with their status.`,
 	}
 	sentryOpts.register(sentry)
 
-	cmd.AddCommand(list, assign, sentry)
+	cmd.AddCommand(list, configViewCmd(), configDistributionCmd(), configCreateCmd(), assign, configDistributeCmd(), configDeleteCmd(), sentry)
 	return cmd
 }
 

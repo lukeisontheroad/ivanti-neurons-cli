@@ -3,7 +3,8 @@
 > Command-line client for Ivanti Neurons for MDM (formerly MobileIron Cloud):
 > search and inspect devices, run device actions (lock, wipe, retire,
 > check-in, kiosk, lost mode), manage users, user and device groups, apps,
-> configurations, certificates, bulk enrollment and tenant settings.
+> configurations (incl. creating and distributing CA certificates),
+> certificates, bulk enrollment and tenant settings.
 > Single static Go binary, configured via ~/.config/ivanti-neurons/config.yml
 > or IVANTI_URL + IVANTI_USERNAME/IVANTI_PASSWORD (or IVANTI_CLIENT_ID/
 > IVANTI_CLIENT_SECRET) environment variables.

@@ -148,6 +148,10 @@ ivanti-neurons app config set 16005 276183 HomepageLocation=https://intranet.exa
 ivanti-neurons app task list
 ivanti-neurons config list
 ivanti-neurons config assign 35140 38002
+ivanti-neurons config create certificate --name "Corporate Root CA" --file root-ca.cer   # PEM or DER; distributed to no one
+ivanti-neurons config distribute 35140 --device 22184     # adds to the current distribution
+ivanti-neurons config distribution 35140
+ivanti-neurons config delete 35140
 ```
 
 ### Tenant, certificates, enrollment
