@@ -118,7 +118,8 @@ viability checks, and the writes listed below):
   defined as APP); device/account/app attribute set/update/remove incl. bulk;
   user create/update/group membership/PIN/enrollment URL/delete; user group
   create/members/delete; bulk enrollment create/upload/add/edit/update/
-  set-expiry/set-user/refresh-token/device delete/delete.
+  set-expiry/set-user/refresh-token/device delete/delete; CERTIFICATE
+  configuration create (PEM and DER)/view/distribution/delete.
 - The API omits null fields from responses (no key is ever `null`), so a
   field missing from a lookup is empty server-side.
 - `GET /api/v1/account?uid=` answers 403 (not false) for an unknown UID.
@@ -151,6 +152,26 @@ viability checks, and the writes listed below):
 - Undocumented calls the CLI uses: `GET /api/v1/account/{id}` (account by
   id) and `GET /api/v1/app/version/{vid}/config/{id}` (configuration with
   assignments); both answer `result: null` for an unknown id.
+- Device configurations beyond list/assign are not in the guide; the CLI
+  sends what the admin UI sends (`OPTIONS` allows GET/POST/PUT on
+  `/api/v1/policy`, GET/DELETE on `/api/v1/policy/{id}`). All take
+  `dmPartitionId` and answer 403 for unknown or deleted ids.
+  - Create: `POST /api/v1/policy?policyType=CERTIFICATE`, multipart fields
+    `dmPartitionId`, `name`, `description`, `enabled`,
+    `dmPartitionDistributionType=NONE`, `delegatedDistMutableInSpace=false`
+    and the file part `certs[0].certData` (PEM and DER both accepted as-is;
+    without it HTTP-400-4). Result: the whole policy; its id is `policyId`.
+  - `GET /api/v1/policy/{id}`: the policy, certificate details in `views`.
+  - `GET /api/v1/policy/{id}/distribution`: `{accounts, groups, devices,
+    ruleGroups}` as objects with `id`. `PUT /api/v1/policy/distribution`
+    takes JSON `{policyId, dmPartitionId, accountIds, groupIds, deviceIds,
+    ruleGroupIds}` with the complete lists (the UI sends them all), so
+    `config distribute` merges the GET first and refuses when it is
+    unreadable. The PUT shape comes from a UI capture; the CLI's PUT is
+    tested against mocks only.
+  - `DELETE /api/v1/policy/{id}?dmPartitionId=` answers `result: 1`.
+  - `POST /api/v1/file` (multipart, `name` + `description` query) stores a
+    file and returns its uuid, with no DELETE; the CLI does not use it.
 - Account `fq` ignores `id=`; `ACCOUNTGROUP='<name>'` lists group members;
   device `fq` takes `ownerId=` and `lastCheckin>'d:hh:mm:ss'` (older than).
 

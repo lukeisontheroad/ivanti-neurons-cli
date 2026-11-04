@@ -94,7 +94,7 @@ the viability check: read-only, except "device relinquish --check" (a PUT).
   app id             app list (ID)                app view/delete, app attrs --app; app config/distribution resolve it to the latest version
   app version id     app view (APPLICATIONVERSIONID)  app config, app distribution, app attrs, app inhouse, app install dist
   app config id      app config list (ID)         app config get/set/update
-  configuration id   config list (ID); device config list (ID, UUID)  config assign; device config exclude/include/reinstall; clear-error takes the UUID
+  configuration id   config list (ID); device config list (ID, UUID)  config view/distribution/assign/distribute/delete; device config exclude/include/reinstall; clear-error takes the UUID
   bulk profile id    bulk list (CSVID)            bulk get/info/update/device/...
   attribute def id   attribute list (ID)          attribute update/delete
 
@@ -106,6 +106,8 @@ the viability check: read-only, except "device relinquish --check" (a PUT).
   Members of a user group                   user list --fq "ACCOUNTGROUP='<group name>'"
   Devices in a device group                 device-group devices <id|name>
   Who gets an app                           app distribution <app-id>
+  Who gets a configuration                  config distribution <config-id> (plus every device if config view shows dmPartitionDistributionType ALL)
+  Install a CA certificate on one device    config create certificate --name <name> --file ca.cer, then config distribute <policyId> --device <device id>
   What a managed app config pushes          app config list <app-id> --type ANDROID_FOR_WORK, then app config get <app-id> <config-id>
   Can an action run on a device             device <action> <id> --check (lists ineligible devices with the reason)
   Tenant overview                           tenant metadata; tenant license; space list; attribute list
@@ -145,7 +147,7 @@ var (
 	docsReadOnly = []string{
 		"auth status", "docs",
 		"tenant metadata", "tenant status", "tenant license", "space list",
-		"config list", "config sentry", "connector list", "attribute list",
+		"config list", "config view", "config distribution", "config sentry", "connector list", "attribute list",
 		"cert crl", "cert revocation-pending", "cert revoked-on", "dep profiles",
 		"device list", "device with-app", "device view", "device attrs get", "device config list",
 		"device compliance status", "device compliance policies", "device certs", "device kiosk-users",
@@ -165,7 +167,7 @@ var (
 		"device attrs replace", "device attrs remove", "device attrs remove-keys",
 		"user delete", "user remove-from-group", "user attrs delete", "user attrs clear",
 		"group delete", "group members set", "device-group members set", "device-group members remove",
-		"attribute delete", "app delete", "app review delete", "app attrs set", "app attrs delete",
+		"attribute delete", "config delete", "app delete", "app review delete", "app attrs set", "app attrs delete",
 		"bulk delete", "bulk device delete", "bulk refresh-token", "cert clear-keys", "oidc reset-secret",
 	}
 )
