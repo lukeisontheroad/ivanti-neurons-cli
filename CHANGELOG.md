@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/lukeisontheroad/ivanti-neurons-cli/compare/v0.2.0...v0.3.0) (2026-11-04)
+
+
+### Features
+
+* **config:** create certificate configurations and manage their distribution ([#11](https://github.com/lukeisontheroad/ivanti-neurons-cli/issues/11)) ([d1fb25b](https://github.com/lukeisontheroad/ivanti-neurons-cli/commit/d1fb25bc0ada208e4494d22a6253e503621c3d13))
+
 ## [0.2.0](https://github.com/lukeisontheroad/ivanti-neurons-cli/compare/v0.1.0...v0.2.0) (2026-10-22)
 
 
